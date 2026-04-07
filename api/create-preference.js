@@ -5,8 +5,9 @@ const client = new MercadoPagoConfig({
 });
 
 export default async function handler(req, res) {
+  // 🔥 CORS (obrigatório)
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
@@ -30,19 +31,29 @@ export default async function handler(req, res) {
 
     const result = await preference.create({
       body: {
-        items: items,
+        items,
 
+        // 🔥 FORÇA PIX + evita parcelamento bugado
         payment_methods: {
-          installments: 1
+          installments: 1,
+          excluded_payment_types: [
+            { id: "ticket" } // remove boleto se quiser só PIX
+          ]
         },
 
+        // 🔥 IMPORTANTE: coloca tua URL real
         back_urls: {
-          success: "https://seusite.com/sucesso",
-          failure: "https://seusite.com/erro",
-          pending: "https://seusite.com/pendente"
+          success: "https://drica-confeitaria.vercel.app/sucesso",
+          failure: "https://drica-confeitaria.vercel.app/erro",
+          pending: "https://drica-confeitaria.vercel.app/pendente"
         },
 
-        notification_url: "https://SEU-PROJETO.vercel.app/api/webhook"
+        auto_return: "approved",
+
+        // 🔥 WEBHOOK REAL (troca pelo teu domínio)
+        notification_url: "https://drica-backend-qg1o.vercel.app/api/webhook",
+
+        external_reference: Date.now().toString()
       }
     });
 
@@ -51,9 +62,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("ERRO:", error);
+    console.error("ERRO DETALHADO:", error);
+
     return res.status(500).json({
-      error: "Erro ao criar pagamento"
+      error: "Erro ao criar pagamento",
+      detalhe: error.message
     });
   }
 }
