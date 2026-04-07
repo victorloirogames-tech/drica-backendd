@@ -5,7 +5,9 @@ const client = new MercadoPagoConfig({
 });
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  // ✅ CORS (melhor prática)
+  res.setHeader("Access-Control-Allow-Origin", "https://drica-sweet-flow.base44.app");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
@@ -38,7 +40,8 @@ export default async function handler(req, res) {
 
         auto_return: "approved",
 
-        notification_url: "https://drica-backend-qg1o.vercel.app/api/webhook"
+        // 🔥 CORRIGIDO AQUI (backendd com 2 D)
+        notification_url: "https://drica-backendd-qg1o.vercel.app/api/webhook"
       }
     });
 
@@ -47,7 +50,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("ERRO:", error);
     return res.status(500).json({
       error: "Erro ao criar pagamento"
     });
