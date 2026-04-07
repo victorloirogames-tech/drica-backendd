@@ -1,35 +1,40 @@
-import mercadopago from "mercadopago";
-
-mercadopago.configure({
-  access_token: process.env.MP_ACCESS_TOKEN
-});
-
 export default async function handler(req, res) {
   try {
-    const { items } = req.body;
+    const body = req.method === "POST" ? req.body : {};
 
-    const preference = {
-      items: items.map(item => ({
-        title: item.nome,
-        unit_price: Number(item.preco),
-        quantity: item.quantidade
-      })),
-      back_urls: {
-        success: "https://seu-app.com/pedidos",
-        failure: "https://seu-app.com/erro",
-        pending: "https://seu-app.com/pedidos"
+    const {
+      amount = 10,
+      description = "Pedido Drica Confeitaria",
+      email = "cliente@test.com"
+    } = body;
+
+    const response = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
       },
-      auto_return: "approved"
-    };
+      body: JSON.stringify({
+        transaction_amount: Number(amount),
+        description,
+        payment_method_id: "pix",
+        payer: {
+          email
+        }
+      })
+    });
 
-    const response = await mercadopago.preferences.create(preference);
+    const data = await response.json();
 
-    res.status(200).json({
-      url: response.body.init_point
+    return res.status(200).json({
+      id: data.id,
+      status: data.status,
+      qr_code: data.point_of_interaction?.transaction_data?.qr_code,
+      qr_code_base64:
+        data.point_of_interaction?.transaction_data?.qr_code_base64
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao criar pagamento" });
+    return res.status(500).json({ error: error.message });
   }
 }
