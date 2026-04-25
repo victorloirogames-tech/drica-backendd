@@ -5,8 +5,13 @@ const client = new MercadoPagoConfig({
 });
 
 export default async function handler(req, res) {
-    // ✅ Configuração de CORS
-    res.setHeader("Access-Control-Allow-Origin", "*"); // Em produção, mude para seu domínio drica-sweet-flow.base44.app
+    // Configuração de CORS Segura
+    const allowedOrigins = ["https://drica-confeitaria-copy-da100ea4base44.app", "http://localhost:3000"];
+    const origin = req.headers.origin;
+    
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+    }
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
@@ -14,48 +19,62 @@ export default async function handler(req, res) {
     if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido" });
 
     try {
-        const { items, method, token, amount } = req.body;
+        const { items, method, token, amount, payerEmail, payerCpf } = req.body;
         const payment = new Payment(client);
 
-        // --- LÓGICA PARA GOOGLE PAY ---
+        // --- LÓGICA GOOGLE PAY ---
         if (method === 'gpay') {
             const gpayResponse = await payment.create({
                 body: {
                     transaction_amount: parseFloat(amount),
-                    token: token, // O token que o Google Pay gera
-                    description: "Pedido Drica Confeitaria (GPay)",
+                    token: token,
+                    description: "Drica Confeitaria - GPay",
                     installments: 1,
-                    payment_method_id: "master", // O MP identifica a bandeira, mas 'master' ou 'visa' servem de base
-                    payer: { email: "cliente@email.com" }
+                    payment_method_id: "master", // O MP tentará identificar, mas ideal é passar dinâmico do front
+                    payer: { 
+                        email: payerEmail || "cliente@email.com" 
+                    }
                 }
             });
-
-            return res.status(200).json({ 
-                status: gpayResponse.status, 
-                id: gpayResponse.id 
-            });
+            return res.status(200).json(gpayResponse);
         }
 
-        // --- LÓGICA PARA PIX (O que você já tinha) ---
-        const totalPix = items.reduce((acc, item) => acc + item.unit_price * item.quantity, 0);
+        // --- LÓGICA PIX ---
+        const totalAmount = items.reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
         
         const pixResponse = await payment.create({
             body: {
-                transaction_amount: totalPix,
+                transaction_amount: totalAmount,
                 description: "Pedido Drica Confeitaria (PIX)",
                 payment_method_id: "pix",
-                payer: { email: "cliente@email.com" }
+                payer: { 
+                    email: payerEmail || "cliente@email.com",
+                    identification: {
+                        type: "CPF",
+                        number: payerCpf || "00000000000" // O PIX costuma exigir CPF válido
+                    }
+                }
             }
         });
+
+        // Verificação de segurança para o QR Code
+        if (!pixResponse.point_of_interaction) {
+            throw new Error("Mercado Pago não gerou os dados do PIX. Verifique suas credenciais.");
+        }
 
         return res.status(200).json({
             id: pixResponse.id,
             qr_code: pixResponse.point_of_interaction.transaction_data.qr_code,
-            qr_code_base64: pixResponse.point_of_interaction.transaction_data.qr_code_base64
+            qr_code_base64: pixResponse.point_of_interaction.transaction_data.qr_code_base64,
+            status: pixResponse.status
         });
 
     } catch (error) {
-        console.error("ERRO NO PAGAMENTO:", error);
-        return res.status(500).json({ error: "Erro ao processar pagamento", detalhes: error.message });
+        console.error("ERRO NO PROCESSAMENTO:", error);
+        return res.status(500).json({ 
+            error: "Erro ao processar pagamento", 
+            message: error.message,
+            details: error.cause || "Sem detalhes adicionais"
+        });
     }
 }
