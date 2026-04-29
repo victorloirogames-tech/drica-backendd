@@ -1,7 +1,12 @@
 {
   "name": "drica-backendd",
   "version": "1.0.0",
+  "description": "Backend Drica Confeitaria",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
-    "mercadopago": "^2.0.0"
+    "mercadopago": "^2.0.15"
   }
 }
