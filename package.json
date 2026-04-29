@@ -1,7 +1,7 @@
 {
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs20.x"
-    }
+  "name": "drica-backendd",
+  "version": "1.0.0",
+  "dependencies": {
+    "mercadopago": "^2.0.15"
   }
 }
