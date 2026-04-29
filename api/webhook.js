@@ -1,5 +1,6 @@
-export default async function handler(req, res) {
+// /api/webhook.js
 
+export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -13,14 +14,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("🔔 Webhook recebido");
+    console.log("Webhook recebido");
 
-    const data = req.body;
+    const body = req.body;
 
-    if (data.type === "payment") {
-      const paymentId = data.data.id;
-
-      console.log("💰 ID do pagamento:", paymentId);
+    if (body.type === "payment") {
+      const paymentId = body.data.id;
 
       const response = await fetch(
         `https://api.mercadopago.com/v1/payments/${paymentId}`,
@@ -33,21 +32,22 @@ export default async function handler(req, res) {
 
       const payment = await response.json();
 
-      if (payment.status === "approved") {
-        console.log("✅ PAGAMENTO APROVADO");
+      console.log("STATUS:", payment.status);
 
-        // 👉 aqui você vai atualizar o pedido futuramente
-        // status = "pago"
-      } else {
-        console.log("⏳ Status:", payment.status);
+      if (payment.status === "approved") {
+        console.log("Pagamento aprovado");
       }
     }
 
-    return res.status(200).json({ received: true });
+    return res.status(200).json({
+      received: true
+    });
 
   } catch (error) {
-    console.error("❌ Erro webhook:", error);
+    console.error(error);
 
-    return res.status(500).json({ error: "Erro webhook" });
+    return res.status(500).json({
+      error: "Erro webhook"
+    });
   }
 }
